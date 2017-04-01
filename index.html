@@ -1,4 +1,263 @@
+<!DOCTYPE html>
 <html>
-<head><title>�Ұ���</title></head>
-<body></body>
+	<head>
+		<meta charset="UTF-8">
+	    <script src="js/three.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/jquery-2.0.3.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/OrbitControls.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/clock.js" type="text/javascript" charset="utf-8"></script>
+		<title>地月运动</title>
+		<style type="text/css">
+			body{
+				overflow:hidden ;
+				
+			}
+		</style>
+		<script type="text/javascript">
+			$(function(){
+				
+				var earth_object3D;
+				var moon_object3D;
+				var earth,moon,sun;
+				
+				var scene = new THREE.Scene();
+				var camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,100000);
+				var renderer = new THREE.WebGLRenderer();
+				
+				var orbitControls = new THREE.OrbitControls(camera);
+				orbitControls.autoRotate = true;
+				var clock = new THREE.Clock();
+				var delta = clock.getDelta();
+				
+				var AmbientColor = '#ffffff';
+				var light = new THREE.AmbientLight(AmbientColor);
+				scene.add(light);
+				
+				var sunLight = new THREE.PointLight(0xddddaa,1.5,900);
+                scene.add(sunLight);
+			
+                camera.position.x = 100;
+                camera.position.y = 100;
+                camera.position.z = 1000;
+				
+				//camera.rotation.x = 10;
+				camera.lookAt(scene.position);
+				renderer.setClearColor('#000');
+                renderer.setSize(window.innerWidth,window.innerHeight);
+                
+                
+                $("#WebGL").append(renderer.domElement);
+                
+                
+                //创建太阳
+                function createSphere_sun(radius,segments,img){
+                	return new THREE.Mesh(new THREE.SphereGeometry(radius,segments,segments),
+                	             new THREE.MeshLambertMaterial({
+                	             	 //加载太阳纹理
+                	             	 map: THREE.ImageUtils.loadTexture(img),
+                	             	 //球体亮度，颜色越灰，球体越暗
+                	             	 color: 0xffff00,
+    emissive: 0xff0000
+                	             })
+                             );
+                }
+                
+                //创建太阳光线
+                function createSprite(color,img){
+                	return new THREE.Sprite(new THREE.SpriteMaterial({
+                		map : THREE.ImageUtils.loadTexture(img),
+                	//	useScreenCoordinates : false,
+                	//	alignment : THREE.SpriteAlignment.center,
+                		color : color,
+                		transparent :  true,
+                		blending : THREE.AdditiveBlending
+                	}));
+                }
+                
+                //创建行星体（向阳面和背阴面）
+                function createSphere(radius,segments,img){
+                	return new THREE.Mesh(new THREE.SphereGeometry(radius,segments,segments),
+                             	 new THREE.MeshPhongMaterial({
+                		             map : THREE.ImageUtils.loadTexture(img)
+                	}));
+                }
+                
+                //创建星体公转轨道
+                function createOrbit(radius,segments,angle,opacity){
+                	//innerRadius,outerRadius,thetaSegments,phiSegments,thetaStart,thetaLenght
+                	var orbit = new THREE.Mesh(new THREE.RingGeometry(radius,radius+3,2*segments,5,0,Math.PI*2),
+                	                 new THREE.MeshBasicMaterial({
+                	                 	  map : THREE.ImageUtils.loadTexture('img/ring.png'),
+                	                 	  side : THREE.DoubleSide,
+                	                 	  transparent : true,
+                	                 	  //透明度
+                	                 	  opacity : opacity
+                	                 })
+                    );
+                    orbit.rotation.set(angle,0,0);
+                    return orbit;
+                }
+                
+                //地月运动
+                function drawEarthAndMoon(axisHelper){
+                	//创建地球
+                	earth = createSphere(30,80,'img/earth.jpg');
+                	earth.name = 'earth';
+                	//地球自转倾斜角度
+                	earth.rotation.set(Math.PI / 4 , 0 , 0 );
+                	//创建月球
+                	moon = createSphere(15,32,'img/moon.jpg');
+                	moon.name = 'moon';
+                	//在以地球球心为原点的坐标系中的位置
+                	moon.position.set(80,0,0);
+                	
+                	//月球公转：月球绕地球中心旋转
+                	moon_object3D = new THREE.Object3D();//moon_object3D 将月球与地球绑定，以地球球心为中心旋转（即月球公转）
+                	moon_object3D.position.set(500,0,0); //moon_object3D的位置为地球球心
+                	//添加地球
+                	moon_object3D.add(earth);
+                	
+                	//添加月球
+                	moon_object3D.add(moon);
+                	//添加月球公转轨道
+                	moon_object3D.add(createOrbit(80,50,Math.PI/2,0.3));
+                	
+                	//地球公转：地球绕太阳中心旋转
+                	earth_object3D = new THREE.Object3D();
+                	earth_object3D.add(moon_object3D);
+                	
+                	sun = createSphere_sun(80,50,'img/sun.jpg');
+                	sun.name = 'sun';
+                	
+                	
+                	
+                	earth_object3D.add(sun);
+                	earth_object3D.add(createSprite('0xFEAB10','img/glow.png'));
+                	moon_object3D.add(axisHelper);
+                	earth_object3D.add(axisHelper);
+                	
+//              	//添加木星
+//              	muxing = createSphere(15,32,'img/moon.jpg');
+//              	//muxing.rotation.x = 2;
+//              	earth_object3D.add(muxing);
+//              	muxing.position.set(800,0,200);
+
+                    dummy = new THREE.Object3D();
+
+                    plane = createSphere(30,50,'img/mars.jpg');
+
+                    plane.position.set(750,0,300);
+
+                    dummy.add(plane);
+
+                    dummy.position.set(0,0,0);
+
+                    scene.add(dummy);
+                	
+                	
+                	//earth_object3D.position.set();
+                	
+                	scene.add(earth_object3D);
+                	
+                	//添加地球公转轨道
+                	scene.add(createOrbit(500,500,Math.PI/2,0.3));
+                	//添加木星公转轨道
+                	scene.add(createOrbit(800,800,Math.PI /2,0.3));
+                }
+                
+                //画太阳系
+                function drawSolarSystem(){
+                	var axisHelper = new THREE.AxisHelper(4);
+                	//CUSTOM //地球 - 月球
+                	drawEarthAndMoon(axisHelper);
+                }
+                 
+                //画星星
+                function createParticles(){
+//					var material = new THREE.PointsMaterial();
+//					for (var x = 0; x < 2000 ; x++ ) {
+//						   
+//							var particle= new THREE.Sprite(material);
+//							particle.position.set((Math.random()*2-1)*650,(Math.random()*2-1)*350,-1000*Math.random());
+//					        
+//							scene.add(particle);
+//						
+//					}
+					
+					var geom = new THREE.Geometry();
+					var material = new THREE.PointCloudMaterial({size:1, vertexColors:true, color:0xffffff});
+					
+					for (var x = 0; x < 1500 ; x++ ) {
+							var particle = new THREE.Vector3((Math.random()*2-1)*2050,(Math.random()*2-1)*2050,2050*(Math.random()*2-1));
+							geom.vertices.push(particle);
+							geom.colors.push(new THREE.Color( 0xffffff ));
+						
+					}
+					
+					var particleSystem = new THREE.PointCloud(geom,material);
+					 mesh = new THREE.Object3D();
+					mesh.add(new THREE.Vector3(0,0,-500));
+					mesh.add(particleSystem)
+					scene.add(mesh);
+				}
+            
+                createParticles();
+                
+                drawSolarSystem();
+                
+                //createSprite('#346656','img/glow.png');
+                
+                render();
+                
+                function render(){
+                	
+                	orbitControls.update(delta);
+                	
+                	earth_object3D.rotation.y += 0.0001; // 地球公转
+                	moon_object3D.rotation.y += 0.01;  //月球公转
+                	
+                	earth.rotation.y += 0.001;  //地球自转
+                	moon.rotation.y += 0.01;   //月球自转
+                	
+                	dummy.rotation.y += 0.0003;
+                	plane.rotation.y += 0.01;
+                	
+                	requestAnimationFrame(render);
+                	renderer.render(scene,camera);
+                }
+                
+                //点击事件
+                $(document).click(function(event){
+					event.preventDefault();
+					
+					
+					var x = (event.clientX / window.innerWidth) * 2 - 1;
+					var y = -(event.clientY / window.innerHeight) * 2 + 1;
+					var mouse = new THREE.Vector3(x,y,0.5);
+					
+					mouse.unproject(camera);
+					
+					var raycaster = new THREE.Raycaster(camera.position,mouse.sub(camera.position).normalize());
+				    var intersects = raycaster.intersectObjects([moon,earth,sun]);
+					if(intersects.length > 0){
+						alert(intersects[0].object.name);
+//						intersects[0].object.material.color = new THREE.Color(0xff0000);
+//						
+//						intersects[0].object.material.transparent = true;
+//						intersects[0].object.material.opacity = 0.3;
+//						console.log(intersects[0].object.material);
+					
+					}else{
+
+					}
+					
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div id="WebGL">
+			
+		</div>
+	</body>
 </html>
